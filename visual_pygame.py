@@ -91,23 +91,36 @@ clock = pygame.time.Clock()
 # coords = [(200.00,200.00), (200.00, 400.00), (400.00, 400.00), (400.00,200.00)]
 # points = init(n=len(coords), coords=coords)
 # points = init()
-points = init(n=100)
+points = init(n=1000)
 file_num = 0
+
+def total_dist(points):
+    cur_dist = 0
+    for p in points:
+        cur_dist += np.linalg.norm(p.pos - p.following.pos)
+    return cur_dist
 
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             break
-    # clock.tick(80)
-
     # FFS figure out how to save frames.
-    # image = cam.get_image()
-    # filename = "Snaps/%04d.png" % file_num
-    # pygame.image.save(image, filename)
+    filename = "Snaps/%04d.png" % file_num
+    pygame.image.save(screen, filename)
 
     screen.fill(pygame.Color("black"))
     draw_points(points)
     update(points)
     pygame.display.flip()
+    file_num += 1
+
+    if (total_dist(points) < 10):
+        print('converged!')
+
+    print(total_dist(points))
+
+    # if file_num % 1000 == 0:
+        # STEP_SIZE = STEP_SIZE / 5
+        # print("new STEP SIZE = ", STEP_SIZE)
 
 # os.system("avconv -r 8 -f image2 -i Snaps/%04d.png -y -qscale 0 -s 640x480 -aspect 4:3 result.avi")
