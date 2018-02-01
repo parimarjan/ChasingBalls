@@ -13,14 +13,14 @@ SCALE = 500
 colour = (0,0,255)
 STEP_SIZE = 0.1
 CONVERGE_THRESHOLD = 0.5
-MAX_CONVERGE_ITER = 100000
+MAX_CONVERGE_ITER = 500000
 
 NUM_POINTS = 5    # number of balls in a simulation
 
-NETWORK_SIZE = (100,100)
+NETWORK_SIZE = (200,200,50)
 # NETWORK_SIZE = (50,50,50)
-TRAIN_SAMPLES = 20000
-TEST_SAMPLES = 1000
+TRAIN_SAMPLES = 100000
+TEST_SAMPLES = 10000
 
 DIM = 2
 ERROR_MARGIN = 3
@@ -182,22 +182,32 @@ def test_network(clf, X):
     return Y
 
 if __name__ == "__main__":
-    train_features, train_labels = gen_data(TRAIN_SAMPLES, NUM_POINTS)
-    print('training done!')
-    # save train data to json
+    if os.path.isfile('train_features.json'):
+        with open('train_features.json', 'r') as outfile:
+            train_features = json.load(outfile)
+        with open('train_labels.json', 'r') as outfile:
+            train_labels = json.load(outfile)
+        with open('test_features.json', 'r') as outfile:
+            test_features = json.load(outfile)
+        with open('test_labels.json', 'r') as outfile:
+            test_labels = json.load(outfile)
+        print('loaded training data!')
+    else:
+        train_features, train_labels = gen_data(TRAIN_SAMPLES, NUM_POINTS)
+        print('training done!')
+        # save train data to json
 
-    with open('train_features.json', 'w') as outfile:
-        json.dump(train_features, outfile)
-    with open('train_labels.json', 'w') as outfile:
-        json.dump(train_labels, outfile)
-
-    test_features, test_labels = gen_data(TEST_SAMPLES, NUM_POINTS)
+        with open('train_features.json', 'w') as outfile:
+            json.dump(train_features, outfile)
+        with open('train_labels.json', 'w') as outfile:
+            json.dump(train_labels, outfile)
     
-
-    with open('test_features.json', 'w') as outfile:
-        json.dump(test_features, outfile)
-    with open('test_labels.json', 'w') as outfile:
-        json.dump(test_labels, outfile)
+    
+        test_features, test_labels = gen_data(TEST_SAMPLES, NUM_POINTS)
+        with open('test_features.json', 'w') as outfile:
+            json.dump(test_features, outfile)
+        with open('test_labels.json', 'w') as outfile:
+            json.dump(test_labels, outfile)
 
     clf = train_network(train_features, train_labels)
     Y_preds = test_network(clf, test_features)
