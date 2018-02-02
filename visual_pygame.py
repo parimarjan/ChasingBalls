@@ -1,8 +1,9 @@
 import random
 import time
-import pygame
 import numpy as np
 import os
+import argparse
+from collections import defaultdict
 
 SCALE = 500
 size = 2
@@ -10,8 +11,29 @@ colour = (0,0,255)
 STEP_SIZE = 0.5
 # STEP_SIZE = 1
 RANDOM_MOVEMENT = False
-NO_CROSSINGS = False
-NUM_POINTS = 20
+# NO_CROSSINGS = False
+# args.use_pygame = True
+import json
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-num_balls", "-n", type=int, required=False,
+                    default=4, help="number of balls")
+parser.add_argument("-start_step_size", "-s", type=float, required=False,
+                    default=0.5, help="")
+parser.add_argument("-min_step_size", "-m", type=float, required=False,
+                    default=0.1, help="")
+parser.add_argument("-no_crossing", "-c", type=int, required=False,
+                    default=1, help="")
+parser.add_argument("-recording_freq", "-r", type=int, required=False,
+                    default=50, help="")
+parser.add_argument("-use_pygame", "-p", type=int, required=False,
+                    default=1, help="")
+parser.add_argument("-name", "-name", type=str, required=False,
+                    default="test", help="")
+args = parser.parse_args()
+
+if args.use_pygame:
+    import pygame
 
 def normalize(v):
     norm = np.linalg.norm(v)
@@ -31,9 +53,10 @@ class Point():
         
         self.pos = np.array(self.pos)
         self.new_pos = np.copy(self.pos)
-
-        self.circle = pygame.draw.circle(screen, colour, (int(self.pos[0]),
-            int(self.pos[1])), size, 0)
+        
+        if args.use_pygame:
+            self.circle = pygame.draw.circle(screen, colour, (int(self.pos[0]),
+                int(self.pos[1])), size, 0)
         self.following = None
 
 def init(n=4, coords=None):
@@ -42,11 +65,11 @@ def init(n=4, coords=None):
     '''
     points = []
     for i in range(n):
-        print('i at start = ', i)
+        # print('i at start = ', i)
         if coords:
             points.append(Point(coord=coords[i]))
         else:
-            if NO_CROSSINGS:
+            if args.no_crossing:
                 # Only add p2 if it doesn't cause crossings with points so far
                 num_try = 0
                 while True:
@@ -67,7 +90,6 @@ def init(n=4, coords=None):
                             break 
 
                     if found_good_point:
-                        print('found good point = ', i)
                         break
 
                     # if (intersect(points[i-2].pos, points[i-1].pos,
@@ -123,13 +145,13 @@ def ccw(A,B,C):
 # Return true if line segments AB and CD intersect
 def intersect(A,B,C,D):
     return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+
 def calculate_crossings(points):
     crossings = 0
     for i, p in enumerate(points):
-
         cur_dist = np.linalg.norm(p.pos - p.following.pos)
         # don't count for crossings
-        if (cur_dist <= 7): continue
+        if (cur_dist <= 3): continue
 
         for j, _ in enumerate(points):
             if (i == j): continue
@@ -144,20 +166,10 @@ def calculate_crossings(points):
 
     return crossings
 
-
-# coords = [(200.00,200.00), (400.00,400.00), (200.00, 400.00), (400.00, 200.00)]
-# coords = [(200.00,200.00), (200.00, 400.00), (400.00, 400.00), (400.00,200.00)]
-# points = init(n=len(coords), coords=coords)
-# points = init()
-
-pygame.init()
-screen = pygame.display.set_mode((640, 480))
-clock = pygame.time.Clock()
-points = init(n=NUM_POINTS)
-i = 0
-
-crossings = calculate_crossings(points)
-print('total crossings = ', crossings)
+if args.use_pygame:
+    pygame.init()
+    screen = pygame.display.set_mode((640, 480))
+    clock = pygame.time.Clock()
 
 def total_dist(points):
     cur_dist = 0
@@ -165,41 +177,52 @@ def total_dist(points):
         cur_dist += np.linalg.norm(p.pos - p.following.pos)
     return cur_dist
 
+STEP_SIZE = args.start_step_size
+points = init(n=args.num_balls)
+crossings = calculate_crossings(points)
+print('total crossings = ', crossings)
+print('total dist = ', total_dist(points))
+i = 0
+data = defaultdict(list)
+
 while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            break
-    # FFS figure out how to save frames.
-    filename = "Snaps/%04d.png" % i
-    pygame.image.save(screen, filename)
+    if args.use_pygame:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                break
+        # FFS figure out how to save frames.
+        if i % 100 == 0:
+            filename = "Snaps/%04d.png" % i
+            pygame.image.save(screen, filename)
+        screen.fill(pygame.Color("black"))
+        draw_points(points)
+        pygame.display.flip()
 
-    screen.fill(pygame.Color("black"))
-
-    draw_points(points)
     update(points)
-    pygame.display.flip()
-
-    i += 1 
-    if i % 100 == 0:
-        print(i)
+    if i % args.recording_freq == 0:
         d = total_dist(points)
         print('{} : {}'.format(i, d))
+        crossings = calculate_crossings(points)
+        print('crossings = ', crossings)
+        data['iter'].append(i)
+        data['crossings'].append(crossings)
+        data['dist'].append(d)
         # crossings = calculate_crossings(points)
         # print('total crossings = ', crossings)
-        if (d < 20):
-            print('converged')
+        if (d < (float(len(points)) * STEP_SIZE)+1):
+            print(float(len(points))/STEP_SIZE)
             print('i = ', i)
+            print('d = ', d)
+            crossings = calculate_crossings(points)
+            print('crossings = ', crossings)
             break
+    i += 1 
+    # if i % 1000 == 0:
+        # print(i)
+        # print(total_dist(points))
+        # if STEP_SIZE > args.min_step_size:
+            # STEP_SIZE = STEP_SIZE / 2
 
-        # if (crossings == 0):
-            # print('crossings = 0')
-            # print('i = ', i)
-            # break
-
-    # if i % 1000 == 0 and STEP_SIZE > 0.01:
-        # STEP_SIZE = STEP_SIZE / 2
-        # print("new STEP SIZE = ", STEP_SIZE)
-
-
-
-# os.system("avconv -r 8 -f image2 -i Snaps/%04d.png -y -qscale 0 -s 640x480 -aspect 4:3 result.avi")
+# dump data
+with open(args.name + '.json', 'w') as f:
+    json.dump(data, f)
