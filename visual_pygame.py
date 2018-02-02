@@ -1,8 +1,8 @@
 import random
 import time
-import pygame
 import numpy as np
 import os
+import argparse
 
 SCALE = 500
 size = 2
@@ -10,6 +10,10 @@ colour = (0,0,255)
 STEP_SIZE = 0.5
 # STEP_SIZE = 1
 RANDOM_MOVEMENT = False
+USE_PYGAME = False
+
+if USE_PYGAME:
+    import pygame
 
 def normalize(v):
     norm = np.linalg.norm(v)
@@ -29,9 +33,10 @@ class Point():
         
         self.pos = np.array(self.pos)
         self.new_pos = np.copy(self.pos)
-
-        self.circle = pygame.draw.circle(screen, colour, (int(self.pos[0]),
-            int(self.pos[1])), size, 0)
+        
+        if USE_PYGAME:
+            self.circle = pygame.draw.circle(screen, colour, (int(self.pos[0]),
+                int(self.pos[1])), size, 0)
         self.following = None
 
 def init(n=4, coords=None):
@@ -83,16 +88,28 @@ def draw_points(points):
          p.circle = pygame.draw.circle(screen, colour, (int(p.pos[0]),
              int(p.pos[1])), size, 0)
 
-pygame.init()
-screen = pygame.display.set_mode((640, 480))
-clock = pygame.time.Clock()
+if USE_PYGAME:
+    pygame.init()
+    screen = pygame.display.set_mode((640, 480))
+    clock = pygame.time.Clock()
 
 # coords = [(200.00,200.00), (400.00,400.00), (200.00, 400.00), (400.00, 200.00)]
 # coords = [(200.00,200.00), (200.00, 400.00), (400.00, 400.00), (400.00,200.00)]
 # points = init(n=len(coords), coords=coords)
 # points = init()
-points = init(n=1000)
-file_num = 0
+parser = argparse.ArgumentParser()
+parser.add_argument("-num_balls", "-n", type=int, required=False,
+                    default=4, help="number of balls")
+parser.add_argument("-start_step_size", "-s", type=float, required=False,
+                    default=0.5, help="")
+parser.add_argument("-min_step_size", "-m", type=float, required=False,
+                    default=0.1, help="")
+
+args = parser.parse_args()
+STEP_SIZE = args.start_step_size
+points = init(n=args.num_balls)
+
+i = 0
 
 def total_dist(points):
     cur_dist = 0
@@ -101,26 +118,26 @@ def total_dist(points):
     return cur_dist
 
 while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            break
-    # FFS figure out how to save frames.
-    filename = "Snaps/%04d.png" % file_num
-    pygame.image.save(screen, filename)
+    if USE_PYGAME:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                break
+        # FFS figure out how to save frames.
+        filename = "Snaps/%04d.png" % i
+        pygame.image.save(screen, filename)
+        screen.fill(pygame.Color("black"))
+        draw_points(points)
+        pygame.display.flip()
 
-    screen.fill(pygame.Color("black"))
-    draw_points(points)
     update(points)
-    pygame.display.flip()
-    file_num += 1
-
+    i += 1
     if (total_dist(points) < 10):
         print('converged!')
+        break
 
-    print(total_dist(points))
 
-    # if file_num % 1000 == 0:
-        # STEP_SIZE = STEP_SIZE / 5
-        # print("new STEP SIZE = ", STEP_SIZE)
-
-# os.system("avconv -r 8 -f image2 -i Snaps/%04d.png -y -qscale 0 -s 640x480 -aspect 4:3 result.avi")
+    if i % 1000 == 0:
+        print(i)
+        print(total_dist(points))
+        if STEP_SIZE > args.min_step_size:
+            STEP_SIZE = STEP_SIZE / 2
