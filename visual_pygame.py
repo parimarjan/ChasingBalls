@@ -1,6 +1,7 @@
 import random
 import time
 import numpy as np
+# import weldnumpy as np
 import os
 import argparse
 from collections import defaultdict
@@ -187,16 +188,18 @@ data = defaultdict(list)
 
 while True:
     if args.use_pygame:
+        pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 break
         # FFS figure out how to save frames.
-        if i % 100 == 0:
-            filename = "Snaps/%04d.png" % i
+        # if i % 100 == 0:
+        if True:
+            filename = "Snaps/img%04d.png" % i
             pygame.image.save(screen, filename)
         screen.fill(pygame.Color("black"))
         draw_points(points)
-        pygame.display.flip()
+        # pygame.display.flip()
 
     update(points)
     if i % args.recording_freq == 0:
